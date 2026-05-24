@@ -7,6 +7,15 @@ import {
   getRdServiceCandidates,
 } from "./config";
 
+const RD_PORTS = [11100, 11101, 11102, 11103, 11104, 11105];
+
+function rdCandidates(protocol: "http" | "https") {
+  return [
+    ...RD_PORTS.map((port) => `${protocol}://127.0.0.1:${port}`),
+    ...RD_PORTS.map((port) => `${protocol}://localhost:${port}`),
+  ];
+}
+
 test("buildFingerprintConfig applies stable defaults for Mantra MFS110", () => {
   const config = buildFingerprintConfig();
 
@@ -19,10 +28,11 @@ test("buildFingerprintConfig applies stable defaults for Mantra MFS110", () => {
   assert.equal(config.captureTimeoutMs, 15000);
   assert.equal(config.env, "P");
   assert.equal(config.backendEndpoint, "/api/fingerprint/capture");
-  assert.equal(config.enablePreviewImage, true);
-  assert.deepEqual(config.legacyPreviewPorts, [8000, 8001, 8002, 8003, 8004, 8005]);
-  assert.deepEqual(config.legacyPreviewDevicePaths, ["mfs100", "mfs110"]);
-  assert.deepEqual(config.legacyPreviewHosts, ["127.0.0.1", "localhost"]);
+  assert.equal(config.enablePreviewImage, false);
+  assert.equal(config.previewStrategy, "none");
+  assert.deepEqual(config.legacyPreviewPorts, [8004]);
+  assert.deepEqual(config.legacyPreviewDevicePaths, ["mfs110"]);
+  assert.deepEqual(config.legacyPreviewHosts, ["127.0.0.1"]);
 });
 
 test("buildFingerprintConfig preserves overrides without dropping defaults", () => {
@@ -44,8 +54,8 @@ test("getRdServiceCandidates tries secure localhost first in auto mode", () => {
   const config = buildFingerprintConfig();
 
   assert.deepEqual(getRdServiceCandidates(config), [
-    "https://127.0.0.1:11100",
-    "http://127.0.0.1:11100",
+    ...rdCandidates("https"),
+    ...rdCandidates("http"),
   ]);
 });
 
@@ -53,20 +63,18 @@ test("getRdServiceCandidates respects forced transport mode", () => {
   const secureOnly = buildFingerprintConfig({ transport: "https" });
   const httpOnly = buildFingerprintConfig({ transport: "http" });
 
-  assert.deepEqual(getRdServiceCandidates(secureOnly), ["https://127.0.0.1:11100"]);
-  assert.deepEqual(getRdServiceCandidates(httpOnly), ["http://127.0.0.1:11100"]);
+  assert.deepEqual(getRdServiceCandidates(secureOnly), rdCandidates("https"));
+  assert.deepEqual(getRdServiceCandidates(httpOnly), rdCandidates("http"));
 });
 
 test("getLegacyPreviewCandidates tries secure loopback endpoints first for hosted HTTPS apps", () => {
   const config = buildFingerprintConfig({
     legacyPreviewPorts: [8004],
-    legacyPreviewDevicePaths: ["mfs100"],
+    legacyPreviewDevicePaths: ["mfs110"],
   });
 
   assert.deepEqual(getLegacyPreviewCandidates(config), [
-    "https://127.0.0.1:8004/mfs100",
-    "https://localhost:8004/mfs100",
-    "http://127.0.0.1:8004/mfs100",
-    "http://localhost:8004/mfs100",
+    "https://127.0.0.1:8004/mfs110",
+    "http://127.0.0.1:8004/mfs110",
   ]);
 });

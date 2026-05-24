@@ -5,9 +5,18 @@ import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 
 export default defineConfig(({mode}) => {
-  const env = loadEnv(mode, '.', '');
+  const appEnv = loadEnv(mode, '.', '');
+  const workspaceEnv = loadEnv(mode, '..', '');
+  const env = {...workspaceEnv, ...appEnv};
+  const useHttps = env.VITE_DEV_HTTPS === 'true';
+
+  for (const [key, value] of Object.entries(env)) {
+    process.env[key] ??= value;
+  }
+
   return {
-    plugins: [react(), tailwindcss(), basicSsl()],
+    base: './',
+    plugins: [react(), tailwindcss(), useHttps ? basicSsl() : null],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
     },

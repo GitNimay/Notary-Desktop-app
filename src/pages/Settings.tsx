@@ -452,9 +452,9 @@ export function Settings() {
                         onChange={(e) => updateFingerprintConfig("enablePreviewImage", e.target.checked)}
                       />
                       <label htmlFor="preview-image" className="text-sm text-on-surface">
-                        Fill the printable thumb slot automatically when a local preview image is available.
+                        Try to capture a printable thumb image from a licensed MFS110 SDK service.
                         <span className="block mt-1 text-on-surface-variant">
-                          This uses the installed Mantra preview service in addition to RD PID capture. Leave it enabled for your notary document workflow.
+                          Keep this off for normal MFS110 L1 RD use. RD capture returns encrypted PID data, not a raw printable thumb image. Enable it only if Mantra provides an MFS110 Windows Public SDK, Enrollment SDK, or Web SDK client service for your non-RD printing workflow.
                         </span>
                       </label>
                     </div>

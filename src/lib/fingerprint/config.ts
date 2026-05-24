@@ -19,11 +19,11 @@ const DEFAULT_FINGERPRINT_CONFIG: FingerprintConfig = {
   clientKey: "",
   otp: "",
   backendEndpoint: "/api/fingerprint/capture",
-  enablePreviewImage: true,
-  previewStrategy: "legacyMantra",
-  legacyPreviewHosts: ["127.0.0.1", "localhost"],
-  legacyPreviewPorts: [8000, 8001, 8002, 8003, 8004, 8005],
-  legacyPreviewDevicePaths: ["mfs100", "mfs110"],
+  enablePreviewImage: false,
+  previewStrategy: "none",
+  legacyPreviewHosts: ["127.0.0.1"],
+  legacyPreviewPorts: [8004],
+  legacyPreviewDevicePaths: ["mfs110"],
   requireBrowserBridge: true,
 };
 
@@ -45,8 +45,9 @@ export function getRdServiceCandidates(config: FingerprintConfig): string[] {
   const insecure127 = ports.map((p) => `http://127.0.0.1:${p}`);
   const insecureLocalhost = ports.map((p) => `http://localhost:${p}`);
 
-  const secure = [...secure127, ...secureLocalhost];
-  const insecure = [...insecure127, ...insecureLocalhost];
+  const uniqueCandidates = (...candidates: string[]) => [...new Set(candidates.filter(Boolean))];
+  const secure = uniqueCandidates(config.rdSecureBaseUrl, ...secure127, ...secureLocalhost);
+  const insecure = uniqueCandidates(config.rdBaseUrl, ...insecure127, ...insecureLocalhost);
 
   if (config.transport === "https") {
     return secure;

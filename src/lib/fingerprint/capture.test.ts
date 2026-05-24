@@ -21,17 +21,17 @@ test("buildLegacyPreviewRequestInits tries no-content-type requests before JSON 
   assert.equal((variants[2].headers as Record<string, string>)["Content-Type"], "application/json");
 });
 
-test("buildPidCaptureRequestInits tries simple POST before RD-specific capture requests", () => {
+test("buildPidCaptureRequestInits tries RD CAPTURE requests before POST fallbacks", () => {
   const variants = buildPidCaptureRequestInits("<PidOptions />");
 
-  assert.equal(variants[0].method, "POST");
-  assert.deepEqual(variants[0].headers, {
-    Accept: "application/xml, text/xml, text/plain, */*",
-  });
+  assert.equal(variants[0].method, "CAPTURE");
+  assert.equal((variants[0].headers as Record<string, string>)["Content-Type"], "text/xml; charset=utf-8");
   assert.equal(variants[0].body, "<PidOptions />");
-  assert.equal(variants[1].method, "POST");
-  assert.equal((variants[1].headers as Record<string, string>)["Content-Type"], "text/plain");
+  assert.equal(variants[1].method, "CAPTURE");
+  assert.equal((variants[1].headers as Record<string, string>)["Content-Type"], undefined);
   assert.equal(variants[2].method, "POST");
-  assert.equal((variants[2].headers as Record<string, string>)["Content-Type"], "text/xml; charset=utf-8");
-  assert.equal(variants[3].method, "CAPTURE");
+  assert.equal((variants[2].headers as Record<string, string>)["Content-Type"], "text/plain");
+  assert.equal(variants[3].method, "POST");
+  assert.equal((variants[3].headers as Record<string, string>)["Content-Type"], "text/xml; charset=utf-8");
+  assert.equal(variants[4].method, "POST");
 });

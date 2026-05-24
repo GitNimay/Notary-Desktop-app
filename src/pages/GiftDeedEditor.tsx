@@ -151,7 +151,6 @@ const PreviewPage = memo(function PreviewPage({
   docPurpose,
   agreementAmount,
 }: PreviewPageProps) {
-  console.log(`PreviewPage: Rendering page ${pageIndex}. First person photo: ${chunk[0]?.safePhoto ? 'present' : 'absent'}, thumb: ${chunk[0]?.safeThumb ? 'present' : 'absent'}`);
   return (
     <div className="mobile-preview-wrapper no-print md:print:block">
       <article
@@ -322,8 +321,6 @@ function WebcamCapture({ onCapture, onClose }: { onCapture: (img: string) => voi
         ctx.scale(-1, 1);
         ctx.drawImage(videoRef.current, 0, 0, width, height); // Draw with new dimensions
         const capturedDataUrl = canvas.toDataURL('image/jpeg', 0.1);
-        console.log("WebcamCapture: Captured photo data URL length:", capturedDataUrl.length);
-        if (capturedDataUrl.length < 100) console.warn("WebcamCapture: Captured photo data URL seems too short, might be empty or invalid.");
         onCapture(capturedDataUrl); // Aggressively reduced quality for smaller PDF
         onClose();
       }
@@ -437,16 +434,12 @@ export function GiftDeedEditor() {
   }, [currentPersonIndexInModal]);
 
   const updatePerson = useCallback((id: string, field: keyof Person, value: any) => {
-    // The previous console.log was placed incorrectly inside the .map(), causing a syntax error.
-    // It's also more efficient to log once per update, so it has been moved outside the map.
-    console.log(`GiftDeedEditor: Updating person ${id}, field '${String(field)}' with value (length: ${String(value).length > 100 ? String(value).length : value})`);
     setPersons(prevPersons => prevPersons.map(p => (p.id === id ? { ...p, [field]: value } : p)));
   }, [setPersons]); // setPersons is stable from useState
 
   const handleCapture = useCallback((img: string) => {
     if (!activeCapture) return;
     updatePerson(activeCapture.personId, activeCapture.type, img);
-    console.log(`GiftDeedEditor: handleCapture completed for ${activeCapture.type}.`);
     setActiveCapture(null);
   }, [activeCapture, updatePerson]);
 
@@ -489,11 +482,11 @@ export function GiftDeedEditor() {
         [personId]: {
           ...prev[personId],
           status: {
-            stage: "success",
+            stage: result.thumbImageDataUrl ? "success" : "warning",
             message: result.thumbImageDataUrl
               ? "Fingerprint captured and added to the document."
-              : "Fingerprint captured, but the scanner did not return a printable thumb preview.",
-            details: result.backendMessage,
+              : "Fingerprint PID captured. Printable thumb image unavailable.",
+            details: result.thumbImageWarning ?? result.backendMessage,
           },
           deviceInfo: result.deviceInfo,
           backendAccepted: result.backendAccepted,

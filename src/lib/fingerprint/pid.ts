@@ -24,18 +24,52 @@ function readTagAttributes(xml: string, tagName: string) {
   return attributes;
 }
 
+function readNamedParams(xml: string) {
+  const params: Record<string, string> = {};
+  const paramPattern = /<Param\b[^>]*\bname="([^"]*)"[^>]*\bvalue="([^"]*)"[^>]*\/?>/gi;
+
+  for (const paramMatch of xml.matchAll(paramPattern)) {
+    params[paramMatch[1]] = paramMatch[2];
+  }
+
+  return params;
+}
+
+function mapFingerprintType(fingerType: FingerprintConfig["fingerType"]) {
+  switch (fingerType) {
+    case "FMR":
+      return "0";
+    case "FIR":
+      return "1";
+    case "BOTH":
+      return "2";
+  }
+}
+
+function mapFingerprintDataFormat(dataType: FingerprintConfig["dataType"]) {
+  return dataType === "X" ? "0" : "1";
+}
+
 export function buildPidOptionsXml(config: FingerprintConfig) {
-  const options = {
-    env: config.env,
+  const options: Record<string, string> = {
     fCount: String(config.fingerCount),
-    fType: config.fingerType,
-    format: config.dataType,
+    fType: mapFingerprintType(config.fingerType),
+    iCount: "0",
+    pCount: "0",
+    format: mapFingerprintDataFormat(config.dataType),
     pidVer: config.pidVersion,
     timeout: String(config.captureTimeoutMs),
-    wadh: config.wadh,
-    otp: config.otp,
     posh: "UNKNOWN",
+    env: config.env,
   };
+
+  if (config.otp) {
+    options.otp = config.otp;
+  }
+
+  if (config.wadh) {
+    options.wadh = config.wadh;
+  }
 
   const optionAttributes = Object.entries(options)
     .map(([key, value]) => `${key}="${escapeXmlAttribute(value)}"`)
@@ -45,23 +79,24 @@ export function buildPidOptionsXml(config: FingerprintConfig) {
     ? `<CustOpts><Param name="ClientKey" value="${escapeXmlAttribute(config.clientKey)}" /></CustOpts>`
     : "";
 
-  return `<?xml version="1.0" encoding="UTF-8"?><PidOptions ver="1.0"><Opts ${optionAttributes} />${customOpts}</PidOptions>`;
+  return `<PidOptions ver="1.0"><Opts ${optionAttributes} />${customOpts}</PidOptions>`;
 }
 
 export function parsePidCaptureResponse(pidXml: string): ParsedPidCaptureResponse {
   const respAttributes = readTagAttributes(pidXml, "Resp");
   const deviceAttributes = readTagAttributes(pidXml, "DeviceInfo");
+  const deviceParams = readNamedParams(pidXml);
 
   const errCode = respAttributes.errCode ?? "999";
   const errInfo = respAttributes.errInfo ?? "Unknown RD capture response";
   const qScore = respAttributes.qScore;
 
   let deviceInfo: FingerprintDeviceInfo | undefined;
-  if (Object.keys(deviceAttributes).length > 0) {
+  if (Object.keys(deviceAttributes).length > 0 || Object.keys(deviceParams).length > 0) {
     deviceInfo = {
       deviceProvider: deviceAttributes.dpId,
-      model: deviceAttributes.mi,
-      serialNumber: deviceAttributes.srno,
+      model: deviceAttributes.mi ?? deviceParams.device_type,
+      serialNumber: deviceAttributes.srno ?? deviceParams.srno,
       deviceCode: deviceAttributes.dc,
       serviceId: deviceAttributes.rdsId,
       serviceVersion: deviceAttributes.rdsVer,

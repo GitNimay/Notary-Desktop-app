@@ -23,11 +23,22 @@ test("buildPidOptionsXml serializes configured RD capture options", () => {
   assert.match(pidOptions, /<PidOptions/);
   assert.match(pidOptions, /env="PP"/);
   assert.match(pidOptions, /fCount="1"/);
-  assert.match(pidOptions, /fType="FIR"/);
-  assert.match(pidOptions, /format="P"/);
+  assert.match(pidOptions, /fType="1"/);
+  assert.match(pidOptions, /iCount="0"/);
+  assert.match(pidOptions, /pCount="0"/);
+  assert.match(pidOptions, /format="1"/);
   assert.match(pidOptions, /pidVer="2\.0"/);
   assert.match(pidOptions, /timeout="20000"/);
   assert.match(pidOptions, /wadh="sample-wadh"/);
+});
+
+test("buildPidOptionsXml maps FMR XML defaults to RD numeric codes", () => {
+  const pidOptions = buildPidOptionsXml(buildFingerprintConfig());
+
+  assert.equal(
+    pidOptions,
+    '<PidOptions ver="1.0"><Opts fCount="1" fType="0" iCount="0" pCount="0" format="0" pidVer="2.0" timeout="15000" posh="UNKNOWN" env="P" /></PidOptions>',
+  );
 });
 
 test("parsePidCaptureResponse returns success details for valid PID XML", () => {

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { Suspense, lazy, useEffect, useState } from "react";
 import { onAuthStateChanged, User } from "firebase/auth";
 import { auth } from "./firebaseAuth";

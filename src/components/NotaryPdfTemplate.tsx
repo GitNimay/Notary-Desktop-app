@@ -230,9 +230,10 @@ const NotaryPdfTemplate: React.FC<NotaryPdfTemplateProps> = ({
   // Generate public asset URLs. Note: In vite, public files can be referenced natively or via import.
   // For react-pdf we must pass an absolute URL or valid path if it's node/browser. 
   // Normally passing relative paths works if hosted.
-  const logo1Src = window.location.origin + '/1_low.jpg';
-  const logo2Src = window.location.origin + '/3_low.jpg';
-  const logo3Src = window.location.origin + '/2_low.jpg';
+  const assetUrl = (filename: string) => new URL(`${import.meta.env.BASE_URL}${filename}`, window.location.href).toString();
+  const logo1Src = assetUrl('1_low.jpg');
+  const logo2Src = assetUrl('3_low.jpg');
+  const logo3Src = assetUrl('2_low.jpg');
 
   const getSafeImageUrl = (url?: string | null) => {
     if (!url) return undefined;

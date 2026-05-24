@@ -12,6 +12,7 @@ export type FingerprintCaptureStage =
   | "checking-device"
   | "waiting-for-finger"
   | "submitting"
+  | "warning"
   | "success"
   | "error";
 
@@ -29,6 +30,7 @@ export interface FingerprintCaptureResult {
   serviceUrl: string;
   backendAccepted: boolean;
   backendMessage?: string;
+  thumbImageWarning?: string;
 }
 
 interface DiscoverRdServiceResult {
@@ -43,6 +45,14 @@ interface CaptureFingerprintArgs {
   onStatus?: (status: FingerprintCaptureStatus) => void;
 }
 
+interface TextResponse {
+  ok: boolean;
+  status: number;
+  statusText?: string;
+  text: () => Promise<string>;
+  json: () => Promise<unknown>;
+}
+
 function emitStatus(
   onStatus: CaptureFingerprintArgs["onStatus"],
   stage: FingerprintCaptureStage,
@@ -52,7 +62,41 @@ function emitStatus(
   onStatus?.({ stage, message, details });
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number) {
+function isLoopbackRdUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    return (
+      (parsedUrl.hostname === "127.0.0.1" || parsedUrl.hostname === "localhost") &&
+      (parsedUrl.protocol === "http:" || parsedUrl.protocol === "https:")
+    );
+  } catch {
+    return false;
+  }
+}
+
+function readRdServiceStatus(infoText: string) {
+  return infoText.match(/<RDService\b[^>]*\bstatus="([^"]*)"/i)?.[1];
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<TextResponse> {
+  if (isLoopbackRdUrl(url) && window.notaryDesktop?.requestRdService) {
+    const response = await window.notaryDesktop.requestRdService({
+      url,
+      method: init.method ?? "GET",
+      headers: init.headers as Record<string, string> | undefined,
+      body: typeof init.body === "string" ? init.body : undefined,
+      timeoutMs,
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      text: async () => response.text,
+      json: async () => JSON.parse(response.text),
+    };
+  }
+
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
 
@@ -92,7 +136,15 @@ export function buildPidCaptureRequestInits(pidOptionsXml: string): RequestInit[
 
   return [
     {
-      method: "POST",
+      method: "CAPTURE",
+      headers: {
+        Accept: acceptHeader,
+        "Content-Type": "text/xml; charset=utf-8",
+      },
+      body: pidOptionsXml,
+    },
+    {
+      method: "CAPTURE",
       headers: {
         Accept: acceptHeader,
       },
@@ -115,10 +167,9 @@ export function buildPidCaptureRequestInits(pidOptionsXml: string): RequestInit[
       body: pidOptionsXml,
     },
     {
-      method: "CAPTURE",
+      method: "POST",
       headers: {
         Accept: acceptHeader,
-        "Content-Type": "text/xml; charset=utf-8",
       },
       body: pidOptionsXml,
     },
@@ -155,37 +206,58 @@ export function buildLegacyPreviewRequestInits(config: FingerprintConfig): Reque
   ];
 }
 
+async function tryRdService(url: string) {
+  const response = await fetchWithTimeout(
+    url,
+    {
+      method: "RDSERVICE",
+      headers: {
+        Accept: "application/xml, text/xml, text/plain, */*",
+      },
+    },
+    3000,
+  );
+
+  if (!response.ok) {
+    throw new Error(`RD service request failed with status ${response.status}.`);
+  }
+
+  return await response.text();
+}
+
 async function tryDeviceInfo(url: string, config: FingerprintConfig) {
-  const infoUrl = `${url}${config.rdInfoPath}`;
-  const methods = ["GET", "DEVICEINFO"];
+  const infoUrls = [`${url}${config.rdInfoPath}`, url];
+  const methods = ["DEVICEINFO", "GET"];
 
   let lastError: unknown;
 
-  for (const method of methods) {
-    try {
-      const response = await fetchWithTimeout(
-        infoUrl,
-        {
-          method,
-          headers: {
-            Accept: "application/xml, text/xml, text/plain, */*",
+  for (const infoUrl of infoUrls) {
+    for (const method of methods) {
+      try {
+        const response = await fetchWithTimeout(
+          infoUrl,
+          {
+            method,
+            headers: {
+              Accept: "application/xml, text/xml, text/plain, */*",
+            },
           },
-        },
-        3000,
-      );
+          3000,
+        );
 
-      if (!response.ok) {
-        lastError = new Error(`Device info request failed with status ${response.status}.`);
-        continue;
+        if (!response.ok) {
+          lastError = new Error(`Device info request failed with status ${response.status}.`);
+          continue;
+        }
+
+        return await response.text();
+      } catch (error) {
+        lastError = error;
       }
-
-      return await response.text();
-    } catch (error) {
-      lastError = error;
     }
   }
 
-  throw lastError ?? new Error(`Unable to inspect RD service at ${infoUrl}.`);
+  throw lastError ?? new Error(`Unable to inspect RD service at ${url}.`);
 }
 
 export async function discoverRdService(config: FingerprintConfig): Promise<DiscoverRdServiceResult> {
@@ -194,10 +266,11 @@ export async function discoverRdService(config: FingerprintConfig): Promise<Disc
 
   for (const candidate of candidates) {
     try {
+      const serviceText = await tryRdService(candidate);
       const infoText = await tryDeviceInfo(candidate, config);
 
       // Verify that the capture endpoint does not immediately fail due to CORS.
-      // Mantra MFS100 on some ports incorrectly returns Access-Control-Allow-Origin: https://127.0.0.1,
+      // Some Mantra RD service builds return a mismatched Access-Control-Allow-Origin value,
       // which causes a CORS preflight failure for the actual capture request later.
       try {
         await fetchWithTimeout(
@@ -213,7 +286,7 @@ export async function discoverRdService(config: FingerprintConfig): Promise<Disc
 
       return {
         baseUrl: candidate,
-        infoText,
+        infoText: `${serviceText}\n${infoText}`,
       };
     } catch (error) {
       lastError = error;
@@ -398,7 +471,11 @@ export async function testFingerprintConnection(
 ) {
   emitStatus(onStatus, "checking-device", "Checking fingerprint device connection...");
   const discovered = await discoverRdService(config);
-  emitStatus(onStatus, "success", "Fingerprint device connection verified.", discovered.baseUrl);
+  const serviceStatus = readRdServiceStatus(discovered.infoText);
+  const statusDetails = serviceStatus
+    ? `${discovered.baseUrl} | RD status: ${serviceStatus}`
+    : discovered.baseUrl;
+  emitStatus(onStatus, "success", "Fingerprint RD service connection verified.", statusDetails);
   return discovered;
 }
 
@@ -415,12 +492,15 @@ export async function captureFingerprintFromScanner({
     onStatus,
     "waiting-for-finger",
     "Device found. Place the finger on the scanner and wait for capture.",
-    discovered.baseUrl,
+    readRdServiceStatus(discovered.infoText)
+      ? `${discovered.baseUrl} | RD status: ${readRdServiceStatus(discovered.infoText)}`
+      : discovered.baseUrl,
   );
 
-  const thumbImageDataUrl = await captureLegacyPreview(config);
+  let thumbImageDataUrl: string | null = null;
   let parsedPid: ParsedPidCaptureResponse | null = null;
   let pidWarning: string | undefined;
+  let thumbImageWarning: string | undefined;
 
   try {
     parsedPid = await capturePidData(discovered.baseUrl, config);
@@ -439,11 +519,34 @@ export async function captureFingerprintFromScanner({
     pidWarning = error instanceof Error && error.message ? error.message : "PID capture was not completed.";
   }
 
-  if (!thumbImageDataUrl) {
-    throw new Error("Fingerprint image was not returned by the scanner. Please keep the finger steady and try again.");
+  if (parsedPid?.ok && config.enablePreviewImage) {
+    emitStatus(onStatus, "submitting", "Fingerprint PID captured. Requesting original thumb image...");
+    thumbImageDataUrl = await captureLegacyPreview(config);
   }
 
-  emitStatus(onStatus, "submitting", "Fingerprint image captured. Finishing document update...");
+  if (parsedPid?.ok && !thumbImageDataUrl) {
+    thumbImageWarning = config.enablePreviewImage
+      ? "RD PID captured, but no licensed Mantra MFS110 public/enrollment SDK image service returned a printable thumb image. No printable thumb image was added. Use Upload Thumb for this person, or install the MFS110 Windows Public SDK/Web SDK from Mantra if they provide one for your use case."
+      : "RD PID captured. MFS110 L1 RD service does not expose a printable raw thumb image, so no thumb image was added. Use Upload Thumb for this person, or enable image capture only after installing a licensed MFS110 public/enrollment SDK from Mantra.";
+    emitStatus(
+      onStatus,
+      "warning",
+      "Fingerprint PID captured. Printable thumb image unavailable.",
+      thumbImageWarning,
+    );
+  }
+
+  if (!parsedPid?.ok && !thumbImageDataUrl) {
+    throw new Error(pidWarning || "Fingerprint capture failed. Keep the finger steady on the scanner and try again.");
+  }
+
+  emitStatus(
+    onStatus,
+    "submitting",
+    thumbImageDataUrl
+      ? "Fingerprint image captured. Finishing document update..."
+      : "Fingerprint PID captured. Finishing document update...",
+  );
   const backendResult = parsedPid?.ok
     ? await submitPidToBackend(config, {
         personId,
@@ -455,15 +558,18 @@ export async function captureFingerprintFromScanner({
     : {
         accepted: false,
         message: pidWarning
-          ? `Printable thumb captured. PID handoff skipped: ${pidWarning}`
-          : "Printable thumb captured. PID handoff skipped.",
+          ? `Printable thumb prepared. PID handoff skipped: ${pidWarning}`
+          : "Printable thumb prepared. PID handoff skipped.",
       };
+  const finalBackendMessage = [thumbImageWarning, backendResult.message].filter(Boolean).join(" ");
 
   emitStatus(
     onStatus,
-    "success",
-    "Fingerprint captured and added to the document.",
-    backendResult.message,
+    thumbImageDataUrl ? "success" : "warning",
+    thumbImageDataUrl
+      ? "Fingerprint captured and added to the document."
+      : "Fingerprint PID captured. Printable thumb image unavailable.",
+    finalBackendMessage,
   );
 
   return {
@@ -473,6 +579,7 @@ export async function captureFingerprintFromScanner({
     deviceInfo: parsedPid?.deviceInfo,
     serviceUrl: discovered.baseUrl,
     backendAccepted: backendResult.accepted,
-    backendMessage: backendResult.message,
+    backendMessage: finalBackendMessage,
+    thumbImageWarning,
   };
 }

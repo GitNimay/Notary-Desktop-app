@@ -116,7 +116,6 @@ export function PersonEditorModal({
   if (!isOpen) return null;
 
   const aadharError = getAadharValidationMessage(person.aadhar);
-  console.log("PersonEditorModal: Rendering for person:", person.id, "photo:", person.photo ? "present (length: " + person.photo.length + ")" : "absent", "thumb:", person.thumb ? "present (length: " + person.thumb.length + ")" : "absent");
   const panError = getPanValidationMessage(person.pan);
 
   return (
@@ -142,8 +141,9 @@ export function PersonEditorModal({
                 onFocus={() => setFocusedPersonId(person.id)} // Set focus for autofill
                 onBlur={(e) => {
                   // Delay clearing focusedPersonId to allow click on autofill suggestions
+                  const input = e.currentTarget;
                   setTimeout(() => {
-                    if (!e.currentTarget.contains(document.activeElement)) {
+                    if (!document.activeElement || !input.contains(document.activeElement)) {
                       setFocusedPersonId(null);
                     }
                   }, 100);
