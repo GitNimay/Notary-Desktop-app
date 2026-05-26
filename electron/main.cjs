@@ -4,7 +4,16 @@ const http = require('http');
 const https = require('https');
 const path = require('path');
 
+const APP_NAME = 'NotaryXpert';
+const APP_ID = 'com.notaryxpert.desktop';
 const isDev = !app.isPackaged;
+
+app.setName(APP_NAME);
+
+if (process.platform === 'win32') {
+  app.setAppUserModelId(APP_ID);
+}
+
 const ALLOWED_RD_PORTS = new Set([
   ...Array.from({ length: 21 }, (_, index) => String(11100 + index)),
   ...Array.from({ length: 6 }, (_, index) => String(8000 + index)),
@@ -104,7 +113,7 @@ function createMainWindow() {
     minWidth: 1024,
     minHeight: 700,
     autoHideMenuBar: true,
-    title: 'NotaryXpert',
+    title: APP_NAME,
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

@@ -1,7 +1,8 @@
 {
   "name": "notary-electron",
+  "productName": "NotaryXpert",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "NotaryXpert Electron desktop app",
   "author": "NotaryXpert",
   "type": "module",
@@ -70,14 +71,17 @@
       "target": [
         "nsis"
       ],
-      "icon": "public/notaryxpert-favicon.png",
-      "signAndEditExecutable": false
+      "icon": "public/notaryxpert.ico",
+      "executableName": "NotaryXpert",
+      "publisherName": "NotaryXpert"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
+      "createStartMenuShortcut": true,
+      "shortcutName": "NotaryXpert",
+      "uninstallDisplayName": "NotaryXpert"
     },
     "publish": [
       {
