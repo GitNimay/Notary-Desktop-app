@@ -1,6 +1,6 @@
 import React, { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Layout } from "../components/layout/Layout";
-import { Camera, Fingerprint, Printer, X, RefreshCw, Plus, Gavel, Search, Loader2, UploadCloud, FileText, Eye, Edit3, Mail, Save } from "lucide-react";
+import { Camera, Fingerprint, Printer, X, RefreshCw, Plus, Gavel, Search, Loader2, UploadCloud, FileText, Eye, Edit3, Mail, Save, Download } from "lucide-react";
 import { PersonEditorModal } from "../components/PersonEditorModal"; // Import the new modal component
 import { FingerprintStatusPanel } from "../components/FingerprintStatusPanel";
 import { collection, addDoc, getDoc, doc, setDoc, query, orderBy, limit, getDocs, where } from "firebase/firestore"; // Keep db for Firestore operations
@@ -43,6 +43,11 @@ interface FingerprintSessionState {
   backendMessage?: string;
   pidXml?: string;
   serviceUrl?: string;
+}
+
+interface PdfPreviewState {
+  url: string;
+  fileName: string;
 }
 
 function getSafeImageUrl(url?: string) {
@@ -355,6 +360,105 @@ function WebcamCapture({ onCapture, onClose }: { onCapture: (img: string) => voi
   );
 }
 
+function PdfPreviewModal({
+  preview,
+  onClose,
+}: {
+  preview: PdfPreviewState;
+  onClose: () => void;
+}) {
+  const frameRef = useRef<HTMLIFrameElement>(null);
+
+  const restoreAppFocus = useCallback(() => {
+    window.focus();
+    frameRef.current?.blur();
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLIFrameElement) {
+      activeElement.blur();
+    }
+  }, []);
+
+  const scheduleFocusRestore = useCallback(() => {
+    window.setTimeout(restoreAppFocus, 250);
+    window.setTimeout(restoreAppFocus, 1200);
+  }, [restoreAppFocus]);
+
+  const handlePrint = useCallback(() => {
+    const frameWindow = frameRef.current?.contentWindow;
+
+    if (!frameWindow) {
+      window.open(preview.url, '_blank');
+      return;
+    }
+
+    try {
+      frameWindow.focus();
+      frameWindow.print();
+      scheduleFocusRestore();
+    } catch (error) {
+      console.error("PDF preview print failed:", error);
+      window.open(preview.url, '_blank');
+      scheduleFocusRestore();
+    }
+  }, [preview.url, scheduleFocusRestore]);
+
+  useEffect(() => {
+    const frameWindow = frameRef.current?.contentWindow;
+    if (!frameWindow) return;
+
+    frameWindow.addEventListener('afterprint', restoreAppFocus);
+    return () => frameWindow.removeEventListener('afterprint', restoreAppFocus);
+  }, [preview.url, restoreAppFocus]);
+
+  return (
+    <div className="fixed inset-0 z-[10000] flex flex-col bg-surface-container-lowest no-print">
+      <div className="flex shrink-0 flex-col gap-3 border-b border-outline-variant/20 bg-surface px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
+          <h2 className="font-headline text-lg font-bold text-on-surface">Print Preview</h2>
+          <p className="truncate text-xs text-on-surface-variant">{preview.fileName}</p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <a
+            href={preview.url}
+            download={preview.fileName}
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-outline-variant/30 bg-surface-container-high px-3 py-2 font-body text-xs font-bold uppercase tracking-[0.14em] text-on-surface transition hover:bg-surface-container"
+          >
+            <Download size={15} />
+            PDF
+          </a>
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-body text-xs font-bold uppercase tracking-[0.14em] text-on-primary transition hover:opacity-90 active:scale-[0.98]"
+          >
+            <Printer size={15} />
+            Print
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-surface-container-high text-on-surface transition hover:bg-surface-container"
+            aria-label="Close print preview"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
+
+      <div className="min-h-0 flex-1 bg-[#2b2b2b] p-3">
+        <iframe
+          ref={frameRef}
+          src={preview.url}
+          title="Generated document preview"
+          className="h-full w-full rounded-lg border border-outline-variant/20 bg-white shadow-xl"
+        />
+      </div>
+    </div>
+  );
+}
+
 export function GiftDeedEditor() {
   const [srNo, setSrNo] = useState("");
   const [kNo, setKNo] = useState("");
@@ -378,6 +482,7 @@ export function GiftDeedEditor() {
   const [showPersonEditorModal, setShowPersonEditorModal] = useState(false); // State for person editor modal
   const [currentPersonIndexInModal, setCurrentPersonIndexInModal] = useState(0); // Index of person being edited in modal
   const [fingerprintSessions, setFingerprintSessions] = useState<Record<string, FingerprintSessionState>>({});
+  const [pdfPreview, setPdfPreview] = useState<PdfPreviewState | null>(null);
 
   const isFingerprintBusy = useCallback((personId: string) => {
     const stage = fingerprintSessions[personId]?.status.stage;
@@ -402,6 +507,51 @@ export function GiftDeedEditor() {
       setBasePdfPageCount(0);
     }
   }, [basePdfFile]);
+
+  const restoreMainDocumentFocus = useCallback(() => {
+    window.focus();
+
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLIFrameElement) {
+      activeElement.blur();
+    }
+  }, []);
+
+  useEffect(() => {
+    window.addEventListener('focus', restoreMainDocumentFocus);
+    return () => window.removeEventListener('focus', restoreMainDocumentFocus);
+  }, [restoreMainDocumentFocus]);
+
+  useEffect(() => {
+    return () => {
+      if (pdfPreview) {
+        URL.revokeObjectURL(pdfPreview.url);
+      }
+    };
+  }, [pdfPreview]);
+
+  const openPdfPreview = useCallback((pdfBlob: Blob, fileName: string) => {
+    const previewUrl = URL.createObjectURL(pdfBlob);
+    setPdfPreview((currentPreview) => {
+      if (currentPreview) {
+        URL.revokeObjectURL(currentPreview.url);
+      }
+
+      return { url: previewUrl, fileName };
+    });
+  }, []);
+
+  const closePdfPreview = useCallback(() => {
+    setPdfPreview((currentPreview) => {
+      if (currentPreview) {
+        URL.revokeObjectURL(currentPreview.url);
+      }
+
+      return null;
+    });
+
+    window.setTimeout(restoreMainDocumentFocus, 0);
+  }, [restoreMainDocumentFocus]);
 
   const [activeCapture, setActiveCapture] = useState<{ personId: string, type: 'photo' | 'thumb' } | null>(null);
 
@@ -1236,18 +1386,20 @@ export function GiftDeedEditor() {
       mergedBlob = await generateMergedPdfBlob();
     } catch (e) {
       console.error("PDF Gen Error:", e);
-      alert("Failed to generate PDF. Dropping back to standalone print.");
-      window.print();
+      alert("Failed to generate PDF. Please try again.");
       setIsUploadingPdf(false);
       return;
     }
 
+    const safeClientName = persons.length > 0 && persons[0].name ? persons[0].name.trim().replace(/\s+/g, '_') : 'Client';
+    const finalFileName = `${safeClientName}_${srNo || '01'}.pdf`;
+    openPdfPreview(mergedBlob, finalFileName);
+
     // Run the upload in background (non-blocking)
     const backgroundUploadTask = (async () => {
       try {
-        const safeClientName = persons.length > 0 && persons[0].name ? persons[0].name.trim().replace(/\s+/g, '_') : 'Client';
         const reader = new FileReader();
-        const finalFile = new File([mergedBlob], `${safeClientName}_${srNo || '01'}.pdf`, { type: 'application/pdf' });
+        const finalFile = new File([mergedBlob], finalFileName, { type: 'application/pdf' });
 
         reader.readAsDataURL(finalFile);
         const newPdfUrl = await new Promise<string>((resolve, reject) => {
@@ -1284,29 +1436,6 @@ export function GiftDeedEditor() {
         setIsUploadingPdf(false);
       }
     })();
-
-    // Trigger Print after a slight delay to allow background fetch to begin
-    setTimeout(() => {
-      const blobUrl = URL.createObjectURL(mergedBlob);
-      if (basePdfFile) {
-        const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
-        iframe.src = blobUrl;
-        document.body.appendChild(iframe);
-        iframe.onload = () => {
-          setTimeout(() => {
-            try {
-              iframe.contentWindow?.focus();
-              iframe.contentWindow?.print();
-            } catch(e) {
-              window.open(blobUrl, '_blank');
-            }
-          }, 100);
-        };
-      } else {
-        window.print();
-      }
-    }, 100);
   };
 
   const handleSendMail = async () => {
@@ -1354,6 +1483,13 @@ Contact Details : Mob. 8286000888 / 9933806888 | Email - advsameervispute@gmail.
 
 
 
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          preview={pdfPreview}
+          onClose={closePdfPreview}
+        />
+      )}
 
       {/* WebCam Modal for both Face and Thumb captures */}
       {activeCapture && (

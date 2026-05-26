@@ -7,6 +7,7 @@ const path = require('path');
 const APP_NAME = 'NotaryXpert';
 const APP_ID = 'com.notaryxpert.desktop';
 const isDev = !app.isPackaged;
+let downloadedUpdateInfo = null;
 
 app.setName(APP_NAME);
 
@@ -105,6 +106,25 @@ ipcMain.handle('rd-service:request', async (event, args) => {
   }
 });
 
+ipcMain.handle('updater:get-downloaded-update', async () => downloadedUpdateInfo);
+
+ipcMain.handle('updater:restart-and-install', async () => {
+  if (!downloadedUpdateInfo || !app.isPackaged) {
+    return { ok: false, message: 'No downloaded update is ready to install.' };
+  }
+
+  autoUpdater.quitAndInstall(false, true);
+  return { ok: true };
+});
+
+function notifyUpdateDownloaded(updateInfo) {
+  BrowserWindow.getAllWindows().forEach((window) => {
+    if (!window.isDestroyed()) {
+      window.webContents.send('updater:update-downloaded', updateInfo);
+    }
+  });
+}
+
 function createMainWindow() {
   const iconPath = path.join(__dirname, '..', isDev ? 'public' : 'dist', 'notaryxpert-favicon.png');
   const mainWindow = new BrowserWindow({
@@ -146,7 +166,21 @@ function setupAutoUpdates() {
   }
 
   autoUpdater.autoDownload = true;
-  autoUpdater.checkForUpdatesAndNotify().catch((error) => {
+  autoUpdater.autoInstallOnAppQuit = false;
+
+  autoUpdater.on('update-downloaded', (event) => {
+    downloadedUpdateInfo = {
+      version: event.version,
+      releaseDate: event.releaseDate,
+    };
+    notifyUpdateDownloaded(downloadedUpdateInfo);
+  });
+
+  autoUpdater.on('error', (error) => {
+    console.error('Auto-update failed:', error);
+  });
+
+  autoUpdater.checkForUpdates().catch((error) => {
     console.error('Auto-update check failed:', error);
   });
 }

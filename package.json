@@ -2,7 +2,7 @@
   "name": "notary-electron",
   "productName": "NotaryXpert",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "NotaryXpert Electron desktop app",
   "author": "NotaryXpert",
   "type": "module",
