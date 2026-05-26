@@ -72,8 +72,7 @@
         "nsis"
       ],
       "icon": "public/notaryxpert.ico",
-      "executableName": "NotaryXpert",
-      "publisherName": "NotaryXpert"
+      "executableName": "NotaryXpert"
     },
     "nsis": {
       "oneClick": false,
