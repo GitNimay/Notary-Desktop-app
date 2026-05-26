@@ -1,7 +1,6 @@
 import { ReactNode, useEffect, useState, useCallback } from "react";
-import { Menu, X, HelpCircle, Copy, Check, Phone } from "lucide-react"; // Import necessary icons for the modal
+import { Menu, X, HelpCircle, Copy, Phone } from "lucide-react"; // Import necessary icons for the modal
 import { Sidebar } from "./Sidebar";
-import { BrandLockup } from "../BrandLockup";
 
 const DESKTOP_BREAKPOINT = 768;
 
@@ -57,12 +56,6 @@ export function Layout({ children }: { children: ReactNode }) {
           >
             <Menu size={24} />
           </button>
-          <BrandLockup
-            markClassName="h-9 w-9"
-            textClassName="text-lg"
-            subtitle="Secure workspace"
-            subtitleClassName="tracking-[0.24em]"
-          />
         </header>
 
         <div className="app-scroll flex-1 print:overflow-visible">

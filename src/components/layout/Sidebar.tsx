@@ -14,7 +14,6 @@ import { useState } from "react";
 import { signOut } from "firebase/auth";
 import { auth } from "../../firebaseAuth";
 import { cn } from "../../lib/utils";
-import { BrandLockup, BrandMark } from "../BrandLockup";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -79,19 +78,8 @@ export function Sidebar({ isOpen, setIsOpen, isDesktop, onOpenSupportModal }: Si
       aria-label="Primary navigation"
     >
       <div className="sidebar-shell flex h-full flex-col overflow-hidden rounded-2xl">
-        <div className={cn("flex items-center border-b border-outline-variant/50", isExpanded ? "justify-between gap-2 px-3 py-3" : "flex-col gap-3 px-2 py-3")}>
-          <div className={cn("min-w-0", isExpanded ? "flex-1" : "flex items-center justify-center")}>
-            {isExpanded ? (
-              <BrandLockup
-                markClassName="h-10 w-10"
-                textClassName="text-[18px]"
-              />
-            ) : (
-              <BrandMark className="h-10 w-10" />
-            )}
-          </div>
-
-          {!isDesktop && (
+        {!isDesktop && (
+          <div className="flex justify-end border-b border-outline-variant/50 px-3 py-3">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
@@ -100,8 +88,8 @@ export function Sidebar({ isOpen, setIsOpen, isDesktop, onOpenSupportModal }: Si
             >
               <X size={16} />
             </button>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className={cn("px-3 pt-3", !isExpanded && "px-2")}>
           <Link

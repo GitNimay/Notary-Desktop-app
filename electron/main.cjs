@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
 const http = require('http');
 const https = require('https');
 const path = require('path');
@@ -101,6 +101,7 @@ function createMainWindow() {
     height: 820,
     minWidth: 1024,
     minHeight: 700,
+    autoHideMenuBar: true,
     title: 'NotaryXpert',
     icon: path.join(__dirname, '..', 'public', 'notaryxpert-favicon.png'),
     webPreferences: {
@@ -139,6 +140,7 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 });
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null);
   createMainWindow();
 
   app.on('activate', () => {
