@@ -70,8 +70,7 @@
       "target": [
         "nsis"
       ],
-      "icon": "public/notaryxpert-favicon.png",
-      "signAndEditExecutable": false
+      "icon": "public/notaryxpert-favicon.png"
     },
     "nsis": {
       "oneClick": false,
