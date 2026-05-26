@@ -6,7 +6,7 @@ Windows cannot verify the publisher or build reputation for the app.
 
 ## Required GitHub Secrets
 
-Add these repository Actions secrets before creating a release tag:
+Add these repository Actions secrets before creating a signed release:
 
 ```text
 CSC_LINK
@@ -30,5 +30,5 @@ Windows users.
 4. Commit and push the version change.
 5. Create and push a release tag, for example `v1.0.1`.
 
-The release workflow fails if signing secrets are missing, so unsigned builds
-are not accidentally published to clients.
+The release workflow warns if signing secrets are missing. Unsigned builds are
+allowed for known clients, but Windows may show Microsoft Defender SmartScreen.

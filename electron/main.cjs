@@ -97,6 +97,7 @@ ipcMain.handle('rd-service:request', async (event, args) => {
 });
 
 function createMainWindow() {
+  const iconPath = path.join(__dirname, '..', isDev ? 'public' : 'dist', 'notaryxpert-favicon.png');
   const mainWindow = new BrowserWindow({
     width: 1280,
     height: 820,
@@ -104,7 +105,7 @@ function createMainWindow() {
     minHeight: 700,
     autoHideMenuBar: true,
     title: 'NotaryXpert',
-    icon: path.join(__dirname, '..', 'public', 'notaryxpert-favicon.png'),
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,

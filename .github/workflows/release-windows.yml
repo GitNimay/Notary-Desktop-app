@@ -25,14 +25,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Require Windows code-signing certificate
+      - name: Check Windows code-signing certificate
         shell: pwsh
         env:
           CSC_LINK: ${{ secrets.CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
         run: |
           if ([string]::IsNullOrWhiteSpace($env:CSC_LINK) -or [string]::IsNullOrWhiteSpace($env:CSC_KEY_PASSWORD)) {
-            Write-Error "Missing Windows code-signing secrets. Add CSC_LINK and CSC_KEY_PASSWORD before publishing a client release."
+            Write-Warning "Windows code-signing secrets are missing. This release will be unsigned and may show Microsoft Defender SmartScreen warnings."
           }
 
       - name: Build and publish Windows installer

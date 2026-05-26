@@ -1,7 +1,8 @@
 import { cn } from "../lib/utils";
+import { publicAssetPath } from "../lib/assets";
 
 export const APP_NAME = "NotaryXpert";
-export const APP_LOGO_SRC = "/Notary-removebg-preview.png";
+export const APP_LOGO_SRC = publicAssetPath("Notary-removebg-preview.png");
 
 interface BrandMarkProps {
   className?: string;

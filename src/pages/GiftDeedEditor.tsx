@@ -15,6 +15,7 @@ import {
   persistPersonMedia,
   type PersonMediaUploadRequest,
 } from "../lib/personMedia";
+import { publicAssetPath } from "../lib/assets";
 // New interface for a person
 interface Person {
   id: string;
@@ -53,6 +54,9 @@ function getSafeImageUrl(url?: string) {
 // Define Cloudinary configuration
 const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
+const LOGO_1_SRC = publicAssetPath("1.png");
+const WATERMARK_SRC = publicAssetPath("2.png");
+const LOGO_2_SRC = publicAssetPath("3.png");
 
 function buildPreviewChunks<T extends { email?: string; phone?: string }>(persons: T[]) {
   const chunks: T[][] = [];
@@ -163,12 +167,12 @@ const PreviewPage = memo(function PreviewPage({
           pageBreakAfter: isLastPage ? "auto" : "always",
         }}
       >
-        <img src="/2.png" alt="watermark" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[60%] opacity-5 pointer-events-none z-0" />
+        <img src={WATERMARK_SRC} alt="watermark" className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[60%] opacity-5 pointer-events-none z-0" />
 
         {pageIndex === 0 && (
           <>
             <div className="flex justify-between items-center text-center gap-2 sm:gap-4">
-              <img src="/1.png" alt="Logo 1" className="h-14 w-14 sm:h-20 sm:w-20 md:h-24 md:w-24 shrink-0" />
+              <img src={LOGO_1_SRC} alt="Logo 1" className="h-14 w-14 sm:h-20 sm:w-20 md:h-24 md:w-24 shrink-0" />
               <div className="flex-1 px-1 min-w-0">
                 <div className="inline-block">
                   <h2 className="font-bold text-base sm:text-xl md:text-2xl m-0">Mr. Sameer Shrikant Vispute</h2>
@@ -183,7 +187,7 @@ const PreviewPage = memo(function PreviewPage({
                 <small className="block text-[11px] sm:text-[12px] tracking-tight break-words">Shree Bhagwati Krupa, Pendse Nagar, Lane No 2, Dombivli (E), Dist. Thane - 421201.</small>
                 <small className="block text-[11px] sm:text-[12px] tracking-tight break-words">A002 Om Residency, Khambalpada, Off 90 Feet Road, Thakurli, Dombivli (E), Dist. Thane - 421201</small>
               </div>
-              <img src="/3.png" alt="Logo 2" className="h-14 w-14 sm:h-20 sm:w-20 md:h-24 md:w-24 shrink-0" />
+              <img src={LOGO_2_SRC} alt="Logo 2" className="h-14 w-14 sm:h-20 sm:w-20 md:h-24 md:w-24 shrink-0" />
             </div>
 
             <div className="flex justify-between mt-4">

@@ -1,7 +1,7 @@
 {
   "name": "notary-electron",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "NotaryXpert Electron desktop app",
   "author": "NotaryXpert",
   "type": "module",
@@ -70,7 +70,8 @@
       "target": [
         "nsis"
       ],
-      "icon": "public/notaryxpert-favicon.png"
+      "icon": "public/notaryxpert-favicon.png",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

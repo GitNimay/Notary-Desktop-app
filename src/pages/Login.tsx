@@ -4,6 +4,9 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { Loader2 } from 'lucide-react';
 import { auth } from '../firebaseAuth';
 import { APP_NAME, BrandMark } from '../components/BrandLockup';
+import { publicAssetPath } from '../lib/assets';
+
+const SHELBY_LOGO_SRC = publicAssetPath('shelby-logo.png');
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -95,7 +98,7 @@ export function Login() {
         {/* Footer branding */}
         <div className="mt-8 flex flex-col items-center gap-0.5 opacity-80">
           <span className="font-body text-xs text-on-surface-variant tracking-wide">Created &amp; managed by</span>
-          <img src="/shelby-logo.png" alt="Shelby" className="h-12 -mt-2 object-contain" />
+          <img src={SHELBY_LOGO_SRC} alt="Shelby" className="h-12 -mt-2 object-contain" />
         </div>
     </div>
   );
