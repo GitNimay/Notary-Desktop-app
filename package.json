@@ -1,7 +1,7 @@
 {
   "name": "notary-electron",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "NotaryXpert Electron desktop app",
   "author": "NotaryXpert",
   "type": "module",
@@ -13,6 +13,7 @@
     "electron:dev": "concurrently -k \"npm:dev\" \"npm:electron:wait\"",
     "electron:wait": "wait-on tcp:3000 && set ELECTRON_RUN_AS_NODE=&& electron .",
     "dist:win": "npm run build && electron-builder --win",
+    "release:win": "npm run build && electron-builder --win --publish always",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
@@ -25,6 +26,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.3",
+    "electron-updater": "^6.8.3",
     "express": "^4.21.2",
     "firebase": "^10.0.0",
     "lucide-react": "^0.546.0",
@@ -55,6 +57,7 @@
     "directories": {
       "output": "release"
     },
+    "artifactName": "${productName}-Setup-${version}.${ext}",
     "files": [
       "dist/**/*",
       "electron/**/*",
@@ -75,6 +78,13 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "GitNimay",
+        "repo": "notary-electron"
+      }
+    ]
   }
 }

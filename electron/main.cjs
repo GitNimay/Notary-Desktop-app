@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const http = require('http');
 const https = require('https');
 const path = require('path');
@@ -129,6 +130,17 @@ function createMainWindow() {
   mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'));
 }
 
+function setupAutoUpdates() {
+  if (!app.isPackaged) {
+    return;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.checkForUpdatesAndNotify().catch((error) => {
+    console.error('Auto-update check failed:', error);
+  });
+}
+
 app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
   if (isDev && (url.startsWith('https://localhost:3000') || url.startsWith('https://127.0.0.1:3000'))) {
     event.preventDefault();
@@ -142,6 +154,7 @@ app.on('certificate-error', (event, webContents, url, error, certificate, callba
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null);
   createMainWindow();
+  setupAutoUpdates();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
