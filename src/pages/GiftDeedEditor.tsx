@@ -163,7 +163,7 @@ const PreviewPage = memo(function PreviewPage({
   return (
     <div className="mobile-preview-wrapper no-print md:print:block">
       <article
-        className="mobile-preview-content relative flex flex-col p-[15mm] box-border print:shadow-none print:w-[210mm] print:max-w-none print:p-[15mm] print:m-0 html2pdf__page-break"
+        className="mobile-preview-content relative flex w-[210mm] min-h-[297mm] flex-col p-[15mm] box-border print:shadow-none print:w-[210mm] print:max-w-none print:p-[15mm] print:m-0 html2pdf__page-break"
         style={{
           color: "#000000",
           backgroundColor: "#ffffff",
@@ -478,7 +478,7 @@ export function GiftDeedEditor() {
   ]);
   const [basePdfFile, setBasePdfFile] = useState<File | null>(null);
   const [basePdfPageCount, setBasePdfPageCount] = useState(0);
-  const [showPreviewMobile, setShowPreviewMobile] = useState(false);
+  const [documentView, setDocumentView] = useState<"edit" | "preview">("edit");
   const [showPersonEditorModal, setShowPersonEditorModal] = useState(false); // State for person editor modal
   const [currentPersonIndexInModal, setCurrentPersonIndexInModal] = useState(0); // Index of person being edited in modal
   const [fingerprintSessions, setFingerprintSessions] = useState<Record<string, FingerprintSessionState>>({});
@@ -756,16 +756,6 @@ export function GiftDeedEditor() {
   const [uploadStatusMessage, setUploadStatusMessage] = useState("Initializing...");
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  // Resizable panel states
-  const [dataEntryPanelWidthPx, setDataEntryPanelWidthPx] = useState(0);
-  const minPanelWidth = 300; // Minimum width for data entry panel in pixels
-  const maxPanelWidth = 800; // Maximum width for data entry panel in pixels
-  const resizerRef = useRef<HTMLDivElement>(null);
-  const parentContainerRef = useRef<HTMLDivElement>(null); // Ref for the flex container
-  const isResizing = useRef(false);
-  const previewContainerRef = useRef<HTMLDivElement>(null);
-  const [previewScale, setPreviewScale] = useState(1);
-
   const syncDocNameState = (value: string) => {
     setDocName(value);
     setDocNameSelection(DOC_NAME_OPTIONS.includes(value as typeof DOC_NAME_OPTIONS[number]) ? value : OTHER_DOC_NAME_OPTION);
@@ -826,70 +816,6 @@ export function GiftDeedEditor() {
       }
     };
     fetchNextSequence();
-  }, []);
-
-  // Resizing logic for the data entry panel
-  const startResizing = useCallback((e: MouseEvent | TouchEvent) => {
-    if (window.innerWidth < 1280) return; // Only allow resizing on XL screens and above
-    isResizing.current = true;
-    document.body.style.cursor = 'ew-resize';
-    document.body.style.userSelect = 'none';
-    document.body.style.pointerEvents = 'none'; // Prevent text selection during drag
-  }, []);
-
-  const stopResizing = useCallback(() => {
-    isResizing.current = false;
-    document.body.style.cursor = 'default';
-    document.body.style.userSelect = 'auto';
-    document.body.style.pointerEvents = 'auto';
-  }, []);
-
-  const resize = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!isResizing.current || !parentContainerRef.current) return;
-
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const parentRect = parentContainerRef.current.getBoundingClientRect();
-
-    let newWidth = clientX - parentRect.left;
-    newWidth = Math.max(minPanelWidth, Math.min(newWidth, maxPanelWidth));
-    setDataEntryPanelWidthPx(newWidth);
-  }, [minPanelWidth, maxPanelWidth]);
-
-  useEffect(() => {
-    const handleGlobalMouseMove = (e: MouseEvent) => resize(e);
-    const handleGlobalMouseUp = () => stopResizing();
-    const handleGlobalTouchMove = (e: TouchEvent) => resize(e);
-    const handleGlobalTouchEnd = () => stopResizing();
-
-    window.addEventListener('mousemove', handleGlobalMouseMove);
-    window.addEventListener('mouseup', handleGlobalMouseUp);
-    window.addEventListener('touchmove', handleGlobalTouchMove);
-    window.addEventListener('touchend', handleGlobalTouchEnd);
-
-    return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove);
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-      window.removeEventListener('touchmove', handleGlobalTouchMove);
-      window.removeEventListener('touchend', handleGlobalTouchEnd);
-    };
-  }, [resize, stopResizing]);
-
-  // Set initial width for data entry panel based on breakpoints
-  useEffect(() => {
-    const setInitialWidth = () => {
-      if (window.innerWidth >= 1536) { // 2xl breakpoint
-        setDataEntryPanelWidthPx(500); // approx 31rem
-      } else if (window.innerWidth >= 1280) { // xl breakpoint
-        setDataEntryPanelWidthPx(368); // approx 23rem
-      } else {
-        // For smaller screens, resizing is disabled, and CSS handles width.
-        setDataEntryPanelWidthPx(368); // Default to XL size for when it becomes XL
-      }
-    };
-
-    setInitialWidth();
-    window.addEventListener('resize', setInitialWidth);
-    return () => window.removeEventListener('resize', setInitialWidth);
   }, []);
 
   const [knownClients, setKnownClients] = useState<Person[]>([]);
@@ -1039,34 +965,6 @@ export function GiftDeedEditor() {
     setKNo(newKNo);
     setPageNo("1");
   };
-
-  // Calculate preview page scale based on available space
-  useEffect(() => {
-    const calculatePreviewScale = () => {
-      if (previewContainerRef.current && window.innerWidth >= 1280) { // Only scale on XL and above
-        const containerWidth = previewContainerRef.current.offsetWidth;
-        const A4_WIDTH_PX = 210 * 3.7795275591; // 210mm in pixels (1mm = 3.7795275591px at 96dpi)
-        // The article itself will be 210mm wide, padding is internal.
-
-        // If the container is smaller than the A4 width, scale down.
-        // Otherwise, keep scale at 1 (don't upscale).
-        if (containerWidth < A4_WIDTH_PX) {
-          setPreviewScale(containerWidth / A4_WIDTH_PX);
-        } else {
-          setPreviewScale(1);
-        }
-      } else {
-        setPreviewScale(1); // No scaling on smaller screens or if ref not ready
-      }
-    };
-
-    calculatePreviewScale(); // Initial calculation
-    const observer = new ResizeObserver(calculatePreviewScale);
-    if (previewContainerRef.current) observer.observe(previewContainerRef.current);
-    return () => {
-      if (previewContainerRef.current) observer.unobserve(previewContainerRef.current);
-    };
-  }, [dataEntryPanelWidthPx]); // Recalculate when dataEntryPanelWidthPx changes (indirectly affects previewContainerRef.current.offsetWidth)
 
   const handleSaveToFirebase = async (overridePdfUrl?: string, silent: boolean = false) => {
     if (!silent) setIsSaving(true);
@@ -1548,37 +1446,26 @@ Contact Details : Mob. 8286000888 / 9933806888 | Email - advsameervispute@gmail.
 
 
       <main className="flex-1 overflow-y-auto w-full p-0 bg-surface print:bg-white print:p-0">
-        {/* Mobile Toggle Button */}
-        <div className="xl:hidden flex justify-end p-4 no-print sticky top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant/10">
+        <div className="flex justify-end p-4 no-print sticky top-0 z-30 bg-surface/88 backdrop-blur-md border-b border-outline-variant/10">
           <button 
-            onClick={() => setShowPreviewMobile(!showPreviewMobile)}
+            onClick={() => setDocumentView((currentView) => (currentView === "edit" ? "preview" : "edit"))}
             className="flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-xl font-body font-bold shadow-lg hover:opacity-90 active:scale-95 transition-all text-sm uppercase tracking-wider"
           >
-            {showPreviewMobile ? (
+            {documentView === "preview" ? (
               <><Edit3 size={18} /> Edit Data</>
             ) : (
               <><Eye size={18} /> Preview Document</>
             )}
           </button>
         </div>
-        <div ref={parentContainerRef} className="flex flex-col xl:flex-row gap-4 p-3 md:p-4 2xl:gap-6 2xl:p-6 justify-center items-start print:block print:p-0">
+        <div className="p-3 md:p-4 2xl:p-6 print:block print:p-0">
           <div
-            className={`w-full bg-surface-container-lowest p-4 rounded-xl editorial-shadow no-print border border-outline-variant/15 font-body shrink-0 relative ${showPreviewMobile ? 'hidden xl:block' : 'block'}`}
-            style={window.innerWidth >= 1280 ? { width: dataEntryPanelWidthPx + 'px' } : {}} // Apply dynamic width only on XL and above
+            className={`mx-auto w-full max-w-[92rem] bg-surface-container-lowest p-4 rounded-xl editorial-shadow no-print border border-outline-variant/15 font-body ${documentView === "preview" ? "hidden" : "block"}`}
           >
-            {window.innerWidth >= 1280 && ( // Only show resizer on XL and above
-              <div
-                ref={resizerRef}
-                onMouseDown={startResizing}
-                onTouchStart={startResizing}
-                className="absolute top-0 right-[-8px] w-4 h-full cursor-ew-resize z-10 hover:bg-primary/20 transition-colors rounded-full"
-                title="Drag to resize data entry panel"
-              ></div>
-            )}
             <div className="mb-4">
               <div className="flex flex-col">
                 <h2 className="font-headline text-2xl font-bold text-on-surface">Data Entry</h2>
-                <p className="text-on-surface-variant font-body text-xs mt-1">Configure document variables. Changes auto-sync to the print preview.</p>
+                <p className="text-on-surface-variant font-body text-xs mt-1">Enter the document details and party information.</p>
               </div>
             </div>
 
@@ -1963,7 +1850,11 @@ Contact Details : Mob. 8286000888 / 9933806888 | Email - advsameervispute@gmail.
             </div>
           </div>
 
-          <div id="document-to-print" className={`w-full xl:sticky xl:top-4 flex flex-col items-center print:static print:block print:w-[210mm] print:m-0 print:p-0 ${showPreviewMobile ? 'flex' : 'hidden xl:flex'}`} style={{ color: '#000000', flex: 1, minWidth: 0 }}>
+          <div
+            id="document-to-print"
+            className={`w-full min-w-0 flex-col items-center overflow-x-auto pb-8 print:static print:block print:w-[210mm] print:m-0 print:p-0 print:overflow-visible ${documentView === "preview" ? "flex" : "hidden"}`}
+            style={{ color: '#000000' }}
+          >
             {previewChunks.map((chunk, pageIndex) => (
               <PreviewPage
                 key={pageIndex}
