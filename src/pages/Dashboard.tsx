@@ -1,5 +1,17 @@
 import { Layout } from "../components/layout/Layout";
-import { FileText, Folder, CalendarDays, Loader2, Calendar, TrendingUp } from "lucide-react";
+import {
+  ArrowUpRight,
+  Calendar,
+  CalendarDays,
+  CheckCircle2,
+  FilePlus2,
+  FileText,
+  Folder,
+  Loader2,
+  PencilLine,
+  Search,
+  TrendingUp,
+} from "lucide-react";
 
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
@@ -150,157 +162,277 @@ export function Dashboard() {
     fetchData();
   }, []);
 
+  const weeklyTotal = chartData.reduce((sum, day) => sum + day.count, 0);
+  const peakDay = chartData.reduce(
+    (top, day) => (day.count > top.count ? day : top),
+    { label: "-", count: 0, percentage: 0, date: "" }
+  );
+  const completedRecent = recentDocs.filter((doc) => doc.status === "COMPLETED").length;
+  const draftRecent = recentDocs.filter((doc) => doc.status === "DRAFT").length;
+
+  const metricCards = [
+    {
+      label: "Total Docs",
+      value: metrics.total,
+      helper: "Complete archive",
+      icon: Folder,
+      tone: "text-primary bg-primary/8 border-primary/10",
+    },
+    {
+      label: "Today's Total",
+      value: metrics.today,
+      helper: "Entered today",
+      icon: CalendarDays,
+      tone: "text-secondary bg-secondary/10 border-secondary/10",
+    },
+    {
+      label: "This Month",
+      value: metrics.month,
+      helper: "Month to date",
+      icon: Calendar,
+      tone: "text-tertiary bg-tertiary/10 border-tertiary/10",
+    },
+  ];
+
   return (
     <Layout>
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-
-        <div className="max-w-6xl mx-auto space-y-12">
-          {/* Header & Quick Actions */}
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <main className="flex-1 overflow-y-auto bg-surface-container-low/45 p-4 md:p-8">
+        <div className="mx-auto max-w-7xl space-y-5">
+          <section className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="font-headline text-4xl font-bold text-on-surface leading-tight">Hi {getFirstName(user)}</h2>
-              <p className="font-body text-on-surface-variant mt-2 text-lg">Your live notarization analytics.</p>
+              <p className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface-variant">Welcome back, {getFirstName(user)}</p>
+              <h1 className="mt-2 font-headline text-4xl font-bold leading-tight tracking-tight text-on-surface md:text-5xl">My Dashboard</h1>
             </div>
-            <div className="flex gap-4">
-              <Link to="/documents/new" className="gradient-primary text-on-primary rounded-xl py-3 px-8 font-body font-bold hover:opacity-90 transition-opacity flex items-center gap-2 shadow-sm text-sm uppercase tracking-wider">
-                <FileText size={18} />
-                +New Document
-              </Link>
 
+            <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
+              <Link
+                to="/documents"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-outline-variant/20 bg-surface-container-lowest px-5 font-body text-sm font-semibold text-on-surface shadow-sm transition-all hover:-translate-y-0.5 hover:bg-surface"
+              >
+                <Search size={17} />
+                Browse Records
+              </Link>
+              <Link
+                to="/documents/new"
+                className="gradient-primary inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-5 font-body text-sm font-bold uppercase tracking-[0.12em] text-on-primary shadow-[0_18px_34px_-24px_rgba(10,10,10,0.55)] transition-all hover:-translate-y-0.5 hover:opacity-90"
+              >
+                <FilePlus2 size={17} />
+                New Document
+              </Link>
             </div>
-          </div>
+          </section>
 
           {isLoading ? (
-             <div className="flex flex-col items-center justify-center p-20 text-on-surface-variant gap-4">
-               <Loader2 size={32} className="animate-spin text-primary" />
-               <p className="font-body font-bold uppercase tracking-wider">Syncing Live Data...</p>
-             </div>
+            <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-10 text-on-surface-variant editorial-shadow">
+              <Loader2 size={32} className="animate-spin text-primary" />
+              <p className="font-body text-sm font-bold uppercase tracking-[0.16em]">Syncing Live Data...</p>
+            </div>
           ) : (
             <>
-              {/* Stats Bento Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-surface-container-lowest rounded-xl p-6 editorial-shadow flex flex-col justify-between h-40 border border-outline-variant/15 hover:border-primary/30 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <span className="font-label text-sm text-on-surface-variant font-medium uppercase tracking-wider">Total Docs</span>
-                    <span className="text-primary bg-primary/10 p-2 rounded-lg flex items-center justify-center">
-                      <Folder size={20} className="fill-primary/20" />
-                    </span>
-                  </div>
-                  <div className="mt-4">
-                    <span className="font-headline text-4xl font-bold text-on-surface">{metrics.total.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="bg-surface-container-lowest rounded-xl p-6 editorial-shadow flex flex-col justify-between h-40 border border-outline-variant/15 hover:border-primary/30 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <span className="font-label text-sm text-on-surface-variant font-medium uppercase tracking-wider">Today's Total</span>
-                    <span className="text-secondary bg-secondary/10 p-2 rounded-lg flex items-center justify-center">
-                      <CalendarDays size={20} className="fill-secondary/20" />
-                    </span>
-                  </div>
-                  <div className="mt-4">
-                    <span className="font-headline text-4xl font-bold text-on-surface">{metrics.today.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="bg-surface-container-lowest rounded-xl p-6 editorial-shadow flex flex-col justify-between h-40 border border-outline-variant/15 hover:border-primary/30 transition-colors">
-                  <div className="flex justify-between items-start">
-                    <span className="font-label text-sm text-on-surface-variant font-medium uppercase tracking-wider">This Month</span>
-                    <span className="text-tertiary bg-tertiary/10 p-2 rounded-lg flex items-center justify-center">
-                      <Calendar size={20} className="fill-tertiary/20" />
-                    </span>
-                  </div>
-                  <div className="mt-4">
-                    <span className="font-headline text-4xl font-bold text-on-surface">{metrics.month.toLocaleString()}</span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Grid 2 Columns: Growth Chart & Recent Documents */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                
-                {/* Visual CSS Trend Chart */}
-                <div className="bg-surface-container-lowest rounded-xl p-6 editorial-shadow border border-outline-variant/15 flex flex-col">
-                  <div className="flex items-center gap-2 mb-8">
-                    <TrendingUp size={20} className="text-primary" />
-                    <h3 className="font-headline text-xl font-bold text-on-surface">Weekly Notarization Growth</h3>
-                  </div>
-                  <div className="flex h-56 items-end gap-3 justify-between pb-2 border-b border-outline-variant/30 flex-grow relative">
-                    <div className="absolute left-0 top-0 bottom-0 w-full flex flex-col justify-between pointer-events-none opacity-20">
-                      <div className="w-full h-[1px] bg-outline-variant"></div>
-                      <div className="w-full h-[1px] bg-outline-variant"></div>
-                      <div className="w-full h-[1px] bg-outline-variant"></div>
-                      <div className="w-full h-[1px] bg-outline-variant"></div>
-                    </div>
-                    {chartData.map(day => (
-                      <div key={day.date} className="flex flex-col items-center flex-1 gap-2 group z-10 h-full justify-end">
-                        <div 
-                          className={`w-full max-w-[40px] rounded-t-md relative flex-grow-0 transition-all duration-500 hover:bg-primary/80 ${day.count > 0 ? 'bg-primary/90' : 'bg-surface-variant'}`} 
-                          style={{ height: `${day.percentage}%` }}
-                        >
-                           <div className="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-container-highest text-on-surface text-sm py-1 px-3 rounded-lg font-bold shadow-lg shadow-black/20 pointer-events-none transition-opacity whitespace-nowrap z-20">
-                             {day.count} Docs
-                           </div>
+              <section className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+                <div className="space-y-5">
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                    {metricCards.map((metric) => (
+                      <div
+                        key={metric.label}
+                        className="group rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 editorial-shadow transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/20 hover:shadow-[0_18px_46px_-36px_rgba(10,10,10,0.55)]"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="font-label text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">{metric.label}</p>
+                            <p className="mt-3 font-headline text-4xl font-bold leading-none text-on-surface">{metric.value.toLocaleString()}</p>
+                          </div>
+                          <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${metric.tone}`}>
+                            <metric.icon size={20} />
+                          </span>
+                        </div>
+                        <div className="mt-6 flex items-center justify-between gap-3 border-t border-outline-variant/15 pt-4">
+                          <span className="font-body text-sm text-on-surface-variant">{metric.helper}</span>
+                          <ArrowUpRight size={16} className="text-on-surface-variant transition-colors group-hover:text-primary" />
                         </div>
                       </div>
                     ))}
                   </div>
-                  <div className="flex flex-row justify-between pt-4">
-                    {chartData.map(day => (
-                       <span key={`l-${day.date}`} className="text-xs text-on-surface-variant font-label font-bold uppercase tracking-wider text-center flex-1">{day.label}</span>
-                    ))}
-                  </div>
-                </div>
 
-                {/* Recent Documents Section */}
-                <div className="flex flex-col">
-                  <h3 className="font-headline text-xl font-bold text-on-surface mb-6 flex items-center">Recent Documents</h3>
-                  <div className="bg-surface-container-lowest rounded-xl editorial-shadow overflow-hidden border border-outline-variant/15 flex-grow">
-                    <div className="w-full">
-                      <div className="grid grid-cols-12 bg-surface-container-low/50 px-6 py-4 font-label text-[11px] font-bold text-on-surface-variant uppercase tracking-wider hidden md:grid border-b border-outline-variant/15">
-                        <div className="col-span-3">Subject</div>
-                        <div className="col-span-4">Client</div>
-                        <div className="col-span-3">Date</div>
-                        <div className="col-span-2 text-right">Status</div>
+                  <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 editorial-shadow md:p-6">
+                    <div className="flex flex-col gap-4 border-b border-outline-variant/15 pb-5 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <TrendingUp size={19} className="text-primary" />
+                          <h2 className="font-headline text-2xl font-bold text-on-surface">Weekly Notarization Growth</h2>
+                        </div>
+                        <p className="mt-1 font-body text-sm text-on-surface-variant">Entry volume across the last seven days.</p>
                       </div>
-                      <div className="divide-y divide-outline-variant/15">
-                        {recentDocs.length === 0 ? (
-                           <div className="p-8 text-center text-on-surface-variant font-body text-sm">No recent documents found in database.</div>
-                        ) : (
-                          recentDocs.map((doc) => (
-                            <div key={doc.id} className="grid grid-cols-1 md:grid-cols-12 items-center px-6 py-4 hover:bg-surface-bright transition-colors gap-y-2 cursor-pointer group" onClick={() => openDocumentInNewTab(doc.pdfUrl, doc.id)}>
-                              <div className="col-span-1 md:col-span-3 font-label text-sm font-semibold text-on-surface group-hover:text-primary transition-colors truncate pr-2">
-                                <span className="md:hidden font-semibold mr-2 text-on-surface-variant">Subject:</span>{doc.srNo ? `Sr: ${doc.srNo}` : doc.id}
-                              </div>
-                              <div className="col-span-1 md:col-span-4 font-body text-sm font-medium text-on-surface truncate pr-2">
-                                <span className="md:hidden font-semibold mr-2 text-on-surface-variant">Client:</span>{doc.client}
-                              </div>
-                              <div className="col-span-1 md:col-span-3 font-label text-xs text-on-surface-variant uppercase tracking-wider">
-                                <span className="md:hidden font-semibold mr-2">Date:</span>{doc.date}
-                              </div>
-                              <div className="col-span-1 md:col-span-2 mt-2 md:mt-0 flex md:justify-end">
-                                <span className={`font-label text-[10px] font-semibold px-2.5 py-1 rounded-full tracking-widest uppercase flex items-center gap-1.5 ${
-                                  doc.status === "DRAFT" 
-                                    ? "bg-outline/20 text-on-surface-variant" 
-                                    : "bg-primary/20 text-primary"
-                                }`}>
-                                  <span className={`w-1 h-1 rounded-full ${doc.status === 'DRAFT' ? 'bg-on-surface-variant' : 'bg-primary'}`}></span>
-                                  {doc.status}
-                                </span>
+                      <div className="rounded-xl bg-surface-container-low px-4 py-3 text-right">
+                        <p className="font-label text-[10px] font-bold uppercase tracking-[0.16em] text-on-surface-variant">Peak day</p>
+                        <p className="font-body text-sm font-semibold text-on-surface">{peakDay.label} / {peakDay.count} docs</p>
+                      </div>
+                    </div>
+
+                    <div className="relative mt-6 h-72 overflow-hidden rounded-xl bg-surface-container-low p-4">
+                      <div className="absolute inset-x-4 bottom-14 top-5 flex flex-col justify-between opacity-60">
+                        <span className="h-px bg-outline-variant/60" />
+                        <span className="h-px bg-outline-variant/45" />
+                        <span className="h-px bg-outline-variant/35" />
+                        <span className="h-px bg-outline-variant/25" />
+                      </div>
+
+                      <div className="relative z-10 flex h-full items-stretch justify-between gap-2">
+                        {chartData.map((day) => (
+                          <div key={day.date} className="group flex min-w-0 flex-1 flex-col">
+                            <div className="flex min-h-0 flex-1 items-end">
+                              <div
+                                className={`relative mx-auto w-full max-w-12 rounded-t-xl border transition-all duration-500 group-hover:brightness-95 ${
+                                  day.count > 0
+                                    ? "border-primary/10 bg-gradient-to-t from-primary to-chart-3"
+                                    : "border-outline-variant/40 bg-surface-container-highest"
+                                }`}
+                                style={{ height: `${day.percentage}%` }}
+                              >
+                                <div className="pointer-events-none absolute -top-10 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-lg bg-inverse-surface px-3 py-1.5 font-body text-xs font-bold text-inverse-on-surface opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                                  {day.count} Docs
+                                </div>
                               </div>
                             </div>
-                          ))
-                        )}
+                            <span className="mt-3 text-center font-label text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+                              {day.label}
+                            </span>
+                          </div>
+                        ))}
                       </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest editorial-shadow">
+                    <div className="flex flex-col gap-4 border-b border-outline-variant/15 p-5 sm:flex-row sm:items-center sm:justify-between md:p-6">
+                      <div>
+                        <h2 className="font-headline text-2xl font-bold text-on-surface">Recent Documents</h2>
+                        <p className="mt-1 font-body text-sm text-on-surface-variant">Five latest records, ready to open.</p>
+                      </div>
+                      <Link
+                        to="/documents"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-surface-container-low px-4 py-2.5 font-body text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high"
+                      >
+                        Open All
+                        <ArrowUpRight size={15} />
+                      </Link>
+                    </div>
+
+                    <div className="divide-y divide-outline-variant/15">
+                      {recentDocs.length === 0 ? (
+                        <div className="p-10 text-center">
+                          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-surface-container-low text-on-surface-variant">
+                            <FileText size={22} />
+                          </div>
+                          <h3 className="font-headline text-xl font-bold text-on-surface">No recent documents</h3>
+                          <p className="mt-2 font-body text-sm text-on-surface-variant">Newly created drafts and completed documents will appear here.</p>
+                        </div>
+                      ) : (
+                        recentDocs.map((doc) => (
+                          <button
+                            type="button"
+                            key={doc.id}
+                            className="group grid w-full grid-cols-1 items-center gap-3 px-5 py-4 text-left transition-colors hover:bg-surface-container-low md:grid-cols-[minmax(0,1fr)_8rem_7rem] md:px-6"
+                            onClick={() => openDocumentInNewTab(doc.pdfUrl, doc.id)}
+                          >
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-3">
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-surface-container-high text-primary">
+                                  <FileText size={18} />
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="truncate font-body text-sm font-semibold text-on-surface transition-colors group-hover:text-primary">
+                                    {doc.client}
+                                  </p>
+                                  <p className="mt-0.5 truncate font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+                                    {doc.srNo ? `Sr: ${doc.srNo}` : doc.id}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            <span className="font-label text-xs font-bold uppercase tracking-[0.12em] text-on-surface-variant md:text-right">{doc.date}</span>
+                            <span className={`inline-flex w-fit items-center gap-1.5 rounded-full px-3 py-1.5 font-label text-[10px] font-bold uppercase tracking-[0.14em] md:ml-auto ${
+                              doc.status === "DRAFT"
+                                ? "bg-outline/15 text-on-surface-variant"
+                                : "bg-primary/10 text-primary"
+                            }`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${doc.status === "DRAFT" ? "bg-on-surface-variant" : "bg-primary"}`} />
+                              {doc.status}
+                            </span>
+                          </button>
+                        ))
+                      )}
                     </div>
                   </div>
                 </div>
 
-              </div>
+                <aside className="space-y-5 xl:sticky xl:top-8 xl:self-start">
+                  <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 editorial-shadow">
+                    <div className="flex items-center justify-between">
+                      <h2 className="font-headline text-xl font-bold text-on-surface">Today</h2>
+                      <span className="rounded-full bg-primary/10 px-3 py-1 font-label text-[10px] font-bold uppercase tracking-[0.14em] text-primary">Live</span>
+                    </div>
+                    <div className="mt-5 rounded-2xl bg-primary p-5 text-on-primary">
+                      <p className="font-label text-[11px] font-bold uppercase tracking-[0.16em] text-on-primary/70">Documents entered</p>
+                      <p className="mt-3 font-headline text-5xl font-bold leading-none">{metrics.today.toLocaleString()}</p>
+                    </div>
+
+                    <div className="mt-4 grid grid-cols-2 gap-3">
+                      <div className="rounded-xl bg-surface-container-low p-4">
+                        <p className="font-label text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">7 days</p>
+                        <p className="mt-2 font-headline text-2xl font-bold text-on-surface">{weeklyTotal.toLocaleString()}</p>
+                      </div>
+                      <div className="rounded-xl bg-surface-container-low p-4">
+                        <p className="font-label text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">Best</p>
+                        <p className="mt-2 font-headline text-2xl font-bold text-on-surface">{peakDay.label}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 editorial-shadow">
+                    <h2 className="font-headline text-xl font-bold text-on-surface">Work Status</h2>
+                    <div className="mt-5 space-y-3">
+                      <div className="flex items-center justify-between rounded-xl bg-surface-container-low p-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                            <CheckCircle2 size={17} />
+                          </span>
+                          <span className="font-body text-sm font-semibold text-on-surface">Completed</span>
+                        </div>
+                        <span className="font-headline text-xl font-bold text-on-surface">{completedRecent}</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl bg-surface-container-low p-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-outline/15 text-on-surface-variant">
+                            <PencilLine size={17} />
+                          </span>
+                          <span className="font-body text-sm font-semibold text-on-surface">Drafts</span>
+                        </div>
+                        <span className="font-headline text-xl font-bold text-on-surface">{draftRecent}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 editorial-shadow">
+                    <div>
+                      <h2 className="font-headline text-xl font-bold text-on-surface">Quick Actions</h2>
+                      <p className="mt-1 font-body text-sm text-on-surface-variant">Common paths for document work.</p>
+                    </div>
+                    <div className="mt-5 space-y-2">
+                      <Link to="/documents/new" className="flex items-center justify-between rounded-xl bg-surface-container-low p-4 font-body text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high">
+                        New document
+                        <ArrowUpRight size={15} />
+                      </Link>
+                      <Link to="/clients" className="flex items-center justify-between rounded-xl bg-surface-container-low p-4 font-body text-sm font-semibold text-on-surface transition-colors hover:bg-surface-container-high">
+                        Client directory
+                        <ArrowUpRight size={15} />
+                      </Link>
+                    </div>
+                  </div>
+                </aside>
+              </section>
             </>
           )}
-
         </div>
       </main>
     </Layout>
